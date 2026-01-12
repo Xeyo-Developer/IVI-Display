@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>IVI System - In-Vehicle Infotainment</title>
+  <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div class="app-container">
+  <div class="dashboard-section">
+    <div class="dashboard-header">
+      <h1 class="dashboard-text">Hi! Welcome to IVI Dashboard</h1>
+    </div>
+
+    <div class="dashboard-tiles">
+      <div class="tile" id="maps-tile">
+        <i class="fas fa-map-marked-alt"></i>
+        <h2>Maps</h2>
+        <p>Navigation & Routes</p>
+      </div>
+
+      <div class="tile" id="radio-tile">
+        <i class="fas fa-broadcast-tower"></i>
+        <h2>Radio</h2>
+        <p>Music & Stations</p>
+      </div>
+
+      <div class="tile" id="weather-tile">
+        <i class="fas fa-cloud-sun"></i>
+        <h2>Weather</h2>
+        <p>Forecast & Conditions</p>
+      </div>
+
+      <div class="tile" id="settings-tile">
+        <i class="fas fa-cog"></i>
+        <h2>Settings</h2>
+        <p>System Configuration</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="music-section">
+    <div class="music-header">
+      <h2 class="music-title">Music Player</h2>
+      <p class="music-subtitle">by IVI Sound System</p>
+    </div>
+
+    <div class="album-container">
+      <div class="placeholder-cover">
+        <i class="fa-solid fa-music"></i>
+      </div>
+    </div>
+
+    <div class="now-playing">
+      <h1>Title</h1>
+      <p>Artist Name</p>
+    </div>
+
+    <audio id="song">
+      <source src="" type="audio/mpeg" />
+    </audio>
+
+    <div class="volume-control">
+      <div class="volume-label">
+        <i class="fas fa-volume-up"></i>
+        <span>Volume</span>
+      </div>
+      <input type="range" value="70" id="progress" min="0" max="100" />
+    </div>
+
+    <div class="controls">
+      <button class="backward">
+        <i class="fa-solid fa-backward"></i>
+      </button>
+      <button class="play-pause-btn">
+        <i class="fa-solid fa-play" id="controlIcon"></i>
+      </button>
+      <button class="forward">
+        <i class="fa-solid fa-forward"></i>
+      </button>
+    </div>
+
+    <div class="player-status">
+      <div class="status-item">
+        <i class="fas fa-headphones"></i>
+        <span>Playing</span>
+      </div>
+      <div class="status-item">
+        <i class="fas fa-music"></i>
+        <span><span class="current-track">1</span>/<span class="total-tracks">5</span></span>
+      </div>
+    </div>
+
+    <div class="playlist-mini">
+      <div class="playlist-title">PLAYLIST</div>
+      <div class="playlist-items">
+        <!-- Playlist will be loaded by JavaScript -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./script.js"></script>
+</body>
+</html>
