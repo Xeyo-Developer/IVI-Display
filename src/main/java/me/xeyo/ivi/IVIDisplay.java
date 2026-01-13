@@ -13,23 +13,30 @@ public class IVIDisplay {
     @Getter
     private final InternalExceptionTracker internalExceptionTracker;
 
+    @Getter
     private JCEFFrame jcefFrame;
 
     private final JavalinInternalServer javalinInternalServer;
 
-    public IVIDisplay(){
+    private final boolean startFullscreen;
+
+    public IVIDisplay(boolean startFullscreen){
+        this.startFullscreen = startFullscreen;
         this.internalExceptionTracker = new InternalExceptionTracker();
-        JCEFFrame.initializeCefApp();
         this.javalinInternalServer = new JavalinInternalServer();
 
         INSTANCE = this;
+
+        System.out.println("[IVI] Fullscreen mode: " + startFullscreen);
     }
 
     public void run() throws Exception {
         this.javalinInternalServer.registerHandlers(this);
         this.javalinInternalServer.start(7070);
 
-        this.jcefFrame = new JCEFFrame("about:blank", false, false);
+        JCEFFrame.initializeCefApp();
+
+        this.jcefFrame = new JCEFFrame("about:blank", false, false, this.startFullscreen);
         this.displayPage("/web/load/loading.html");
 
         Thread.sleep(1000);

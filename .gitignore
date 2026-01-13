@@ -6,6 +6,8 @@ jcef-bundle/
 debug.log
 dependency-reduced-pom.xml
 
+ivi_settings.json
+
 ### IntelliJ IDEA ###
 .idea/
 

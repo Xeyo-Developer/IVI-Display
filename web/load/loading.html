@@ -5,24 +5,37 @@
         box-sizing: border-box;
     }
 
+    :root[data-theme="dark"] {
+        --background-color: #0c0c14;
+        --spinner-border: rgba(255, 152, 0, 0.2);
+        --spinner-border-top: #FF9800;
+    }
+
+    :root[data-theme="orange"] {
+        --background-color: #1a0c0a;
+        --spinner-border: rgba(255, 215, 0, 0.2);
+        --spinner-border-top: #FFD700;
+    }
+
     html, body {
         height: 100%;
         overflow: hidden;
+        transition: background-color 0.3s ease;
     }
 
     body {
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #0c0c14;
+        background-color: var(--background-color);
         font-family: Arial, sans-serif;
     }
 
     .spinner {
         width: 60px;
         height: 60px;
-        border: 4px solid rgba(255, 152, 0, 0.2);
-        border-top: 4px solid #FF9800;
+        border: 4px solid var(--spinner-border);
+        border-top: 4px solid var(--spinner-border-top);
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
@@ -33,4 +46,23 @@
     }
 </style>
 
-<div class="spinner"></div>
+<body>
+    <div class="spinner"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('http://localhost:7070/api/app/settings/theme');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        document.documentElement.setAttribute('data-theme', data.value);
+                        console.log('[THEME] Applied theme:', data.value);
+                    }
+                }
+            } catch (error) {
+                console.error('[THEME] Failed to load theme:', error);
+            }
+        });
+    </script>
+</body>

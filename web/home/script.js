@@ -38,14 +38,289 @@ let songs = [
 let currentSongIndex = 0;
 let isPlaying = false;
 let progressInterval;
+let isSettingsModalOpen = false;
+let areNotificationsEnabled = true;
+
+// ===== API CONFIGURATION =====
+const API_BASE_URL = 'http://localhost:7070/api';
+const API_ENDPOINTS = {
+  SETTINGS: `${API_BASE_URL}/app/settings`,
+  THEMES: `${API_BASE_URL}/app/settings/themes`
+};
+
+async function fetchWithTimeout(url, options = {}, timeout = 5000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
+async function getSettings() {
+  try {
+    const response = await fetchWithTimeout(API_ENDPOINTS.SETTINGS);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.success) {
+      return data.settings;
+    } else {
+      throw new Error(data.error || 'Failed to get settings');
+    }
+  } catch (error) {
+    console.error('[API] Failed to get settings:', error);
+    showSystemNotification('Settings Error', 'Cannot load settings from server');
+    return null;
+  }
+}
+
+async function getSetting(key) {
+  try {
+    const response = await fetchWithTimeout(`${API_ENDPOINTS.SETTINGS}/${key}`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.success) {
+      return data.value;
+    } else {
+      throw new Error(data.error || 'Failed to get setting');
+    }
+  } catch (error) {
+    console.error(`[API] Failed to get setting "${key}":`, error);
+    return null;
+  }
+}
+
+async function updateSetting(key, value) {
+  try {
+    const response = await fetchWithTimeout(`${API_ENDPOINTS.SETTINGS}/${key}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ value })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.success) {
+      return data;
+    } else {
+      throw new Error(data.error || 'Failed to update setting');
+    }
+  } catch (error) {
+    console.error(`[API] Failed to update setting "${key}":`, error);
+    showSystemNotification('Settings Error', `Cannot update ${key}: ${error.message}`);
+    return null;
+  }
+}
+
+async function getAvailableThemes() {
+  try {
+    const response = await fetchWithTimeout(API_ENDPOINTS.THEMES);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.success) {
+      return {
+        themes: data.themes,
+        current: data.current
+      };
+    } else {
+      throw new Error('Failed to get themes');
+    }
+  } catch (error) {
+    console.error('[API] Failed to get themes:', error);
+    return {
+      themes: ['dark', 'orange'],
+      current: 'dark'
+    };
+  }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   initializeApp();
   setupDashboardTiles();
   setupEventListeners();
   loadPlaylist();
+
+  loadAndApplySettings();
 });
 
+// ===== SETTINGS FUNCTIONS =====
+async function loadAndApplySettings() {
+  try {
+    const settings = await getSettings();
+    if (settings) {
+      applyTheme(settings.theme);
+      applyFullscreen(settings.fullscreen);
+      updateNotificationsSetting(settings.notifications);
+    }
+  } catch (error) {
+    console.warn('[APP] Could not load settings:', error);
+  }
+}
+
+function applyTheme(theme) {
+  document.body.setAttribute('data-theme', theme);
+  console.log(`[THEME] Applied theme: ${theme}`);
+}
+
+function applyFullscreen(enabled) {
+  if (enabled) {
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(e => {
+        console.error('[FULLSCREEN] Error:', e);
+      });
+    }
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  }
+}
+
+function updateNotificationsSetting(enabled) {
+  areNotificationsEnabled = enabled;
+  console.log(`[NOTIFICATIONS] ${enabled ? 'Enabled' : 'Disabled'}`);
+}
+
+// ===== SETTINGS MODAL =====
+async function showSettingsModal() {
+  if (isSettingsModalOpen) {
+    return;
+  }
+
+  isSettingsModalOpen = true;
+
+  const modal = document.createElement('div');
+  modal.className = 'settings-modal';
+
+  const settings = await getSettings();
+  const themesData = await getAvailableThemes();
+
+  if (!settings) {
+    showSystemNotification('Error', 'Cannot load settings');
+    isSettingsModalOpen = false;
+    return;
+  }
+
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>System Settings</h2>
+        <button class="close-modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="setting-item">
+          <label for="theme-select">
+            <i class="fas fa-palette"></i>
+            <span>Theme</span>
+          </label>
+          <select id="theme-select">
+            ${themesData.themes.map(theme =>
+              `<option value="${theme}" ${settings.theme === theme ? 'selected' : ''}>
+                ${theme.charAt(0).toUpperCase() + theme.slice(1)}
+              </option>`
+            ).join('')}
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label for="fullscreen-toggle">
+            <i class="fas fa-expand"></i>
+            <span>Fullscreen Mode</span>
+          </label>
+          <label class="switch">
+            <input type="checkbox" id="fullscreen-toggle" ${settings.fullscreen ? 'checked' : ''}>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <label for="notifications-toggle">
+            <i class="fas fa-bell"></i>
+            <span>Notifications</span>
+          </label>
+          <label class="switch">
+            <input type="checkbox" id="notifications-toggle" ${settings.notifications ? 'checked' : ''}>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-actions">
+          <button class="btn-primary" id="save-settings">
+            <i class="fas fa-save"></i> Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const closeModal = () => {
+    if (modal.parentNode) {
+      document.body.removeChild(modal);
+    }
+    isSettingsModalOpen = false;
+    document.removeEventListener('keydown', handleEscapeKey);
+  };
+
+  const handleEscapeKey = (e) => {
+    if (e.key === 'Escape' && isSettingsModalOpen) {
+      closeModal();
+    }
+  };
+
+  modal.querySelector('.close-modal').addEventListener('click', closeModal);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closeModal();
+    }
+  });
+
+  modal.querySelector('#save-settings').addEventListener('click', async () => {
+    const theme = modal.querySelector('#theme-select').value;
+    const fullscreen = modal.querySelector('#fullscreen-toggle').checked;
+    const notifications = modal.querySelector('#notifications-toggle').checked;
+
+    await updateSetting('theme', theme);
+    await updateSetting('fullscreen', fullscreen);
+    await updateSetting('notifications', notifications);
+
+    applyTheme(theme);
+    applyFullscreen(fullscreen);
+    updateNotificationsSetting(notifications);
+
+    showSystemNotification('Settings', 'Settings saved successfully');
+    closeModal();
+  });
+
+  document.addEventListener('keydown', handleEscapeKey);
+}
+
+// ===== INITIALIZATION =====
 function initializeApp() {
   song.volume = 0.7;
   progress.value = 70;
@@ -63,6 +338,8 @@ function initializeApp() {
       e.preventDefault();
     }
   });
+
+  updateNotificationsSetting(true);
 }
 
 // ===== DASHBOARD FUNCTIONALITY =====
@@ -71,12 +348,9 @@ function setupDashboardTiles() {
 
   tiles.forEach(tile => {
     tile.addEventListener('click', handleTileClick);
-
     tile.addEventListener('touchstart', handleTileTouch, { passive: true });
-
     tile.setAttribute('tabindex', '0');
     tile.addEventListener('keydown', handleTileKeydown);
-
     tile.style.userSelect = 'none';
     tile.style.webkitUserSelect = 'none';
   });
@@ -129,7 +403,7 @@ function executeTileFunction(tileId) {
       break;
 
     case 'settings-tile':
-      showSystemNotification('Settings', 'Service not available yet');
+      showSettingsModal();
       break;
   }
 }
@@ -169,7 +443,6 @@ function updateSongInfo() {
   }
 
   updateActivePlaylistItem();
-
   updateTrackCounter();
 }
 
@@ -193,9 +466,7 @@ function playSong() {
     controlIcon.classList.add("fa-pause");
 
     startProgressUpdates();
-
     updateSongInfo();
-
     showSystemNotification('Now Playing', songs[currentSongIndex].title);
   }).catch(error => {
     console.error("Playback error:", error);
@@ -210,7 +481,6 @@ function pauseSong() {
   controlIcon.classList.add("fa-play");
 
   stopProgressUpdates();
-
   albumCover.style.animation = 'none';
 }
 
@@ -325,45 +595,17 @@ function updateTrackCounter() {
 
 // ===== SYSTEM FUNCTIONS =====
 function showSystemNotification(title, message) {
+  if (!areNotificationsEnabled) {
+    console.log(`[NOTIFICATION SKIPPED] ${title}: ${message}`);
+    return;
+  }
+
   const notification = document.createElement('div');
   notification.className = 'system-notification';
   notification.innerHTML = `
     <div class="notification-title">${title}</div>
     <div class="notification-message">${message}</div>
   `;
-
-  notification.style.cssText = `
-    position: fixed;
-    top: 30px;
-    right: 30px;
-    background: rgba(28, 22, 37, 0.95);
-    color: var(--primary-clr);
-    padding: 20px 25px;
-    border-radius: 15px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    z-index: 1000;
-    transform: translateX(150%);
-    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    min-width: 250px;
-    max-width: 300px;
-  `;
-
-  const titleStyle = `
-    font-weight: 600;
-    margin-bottom: 5px;
-    font-size: 1.1rem;
-    color: #FF9800;
-  `;
-
-  const messageStyle = `
-    font-size: 0.9rem;
-    opacity: 0.9;
-  `;
-
-  notification.querySelector('.notification-title').style.cssText = titleStyle;
-  notification.querySelector('.notification-message').style.cssText = messageStyle;
 
   document.body.appendChild(notification);
 
@@ -412,43 +654,16 @@ function handleKeyboardShortcuts(e) {
       break;
     case 's':
       e.preventDefault();
-      executeTileFunction('settings-tile');
+      showSettingsModal();
       break;
     case 'Escape':
       const modal = document.querySelector('.settings-modal');
       if (modal) {
-        document.body.removeChild(modal);
+        const closeBtn = modal.querySelector('.close-modal');
+        if (closeBtn) {
+          closeBtn.click();
+        }
       }
       break;
   }
 }
-
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  .playlist-item {
-    transition: all 0.2s ease;
-  }
-
-  button, .tile {
-    transition: all 0.2s ease;
-  }
-
-  .system-notification {
-    animation: slideInRight 0.4s ease;
-  }
-
-  @keyframes slideInRight {
-    from {
-      transform: translateX(150%);
-    }
-    to {
-      transform: translateX(0);
-    }
-  }
-`;
-document.head.appendChild(style);

@@ -31,6 +31,11 @@ public class JCEFFrame extends JFrame {
     private final CefBrowser browser;
     private boolean browserFocus = true;
 
+    private int normalWidth = 1280;
+    private int normalHeight = 720;
+    private int normalX;
+    private int normalY;
+
     public static void initializeCefApp(){
         final var installDir = new File("jcef-bundle");
         final CefAppBuilder cefBuilder = new CefAppBuilder();
@@ -44,7 +49,11 @@ public class JCEFFrame extends JFrame {
         cefBuilder.getCefSettings().persist_session_cookies = true;
     }
 
-    public JCEFFrame(final String startURL, final boolean useOSR, final boolean isTransparent) throws UnsupportedPlatformException, CefInitializationException, IOException, InterruptedException {
+    public JCEFFrame(final String startURL, final boolean useOSR, final boolean isTransparent, final boolean startFullscreen) throws UnsupportedPlatformException, CefInitializationException, IOException, InterruptedException {
+        if (startFullscreen) {
+            this.setUndecorated(true);
+        }
+
         final CefAppBuilder builder = new CefAppBuilder();
         builder.getCefSettings().windowless_rendering_enabled = useOSR;
         builder.setAppHandler(new MavenCefAppHandlerAdapter() {
@@ -94,9 +103,36 @@ public class JCEFFrame extends JFrame {
         this.getContentPane().add(browserUI, BorderLayout.CENTER);
         this.pack();
 
-        this.setSize(1280, 720);
-        this.setLocationRelativeTo(null);
+        this.normalX = 100;
+        this.normalY = 100;
+
+        if (startFullscreen) {
+            this.setExtendedState(JFrame.MAXIMIZED_BOTH);
+            this.setLocationRelativeTo(null);
+        } else {
+            this.setSize(normalWidth, normalHeight);
+            this.setLocationRelativeTo(null);
+        }
+
         this.setVisible(true);
+
+        if (startFullscreen) {
+            this.setAlwaysOnTop(true);
+            this.toFront();
+            this.requestFocus();
+
+            new java.util.Timer().schedule(
+                    new java.util.TimerTask() {
+                        @Override
+                        public void run() {
+                            javax.swing.SwingUtilities.invokeLater(() -> {
+                                setAlwaysOnTop(false);
+                            });
+                        }
+                    },
+                    1000
+            );
+        }
 
         this.addWindowListener(new WindowAdapter() {
             @Override
@@ -108,5 +144,51 @@ public class JCEFFrame extends JFrame {
                 JCEFFrame.this.dispose();
             }
         });
+    }
+
+    public void setFullscreen(boolean fullscreen) {
+        if (fullscreen == this.isUndecorated()) {
+            return;
+        }
+
+        if (fullscreen) {
+            this.normalWidth = this.getWidth();
+            this.normalHeight = this.getHeight();
+            this.normalX = this.getX();
+            this.normalY = this.getY();
+
+            this.dispose();
+            this.setUndecorated(true);
+            this.setExtendedState(JFrame.MAXIMIZED_BOTH);
+            this.setVisible(true);
+
+            this.setAlwaysOnTop(true);
+            this.toFront();
+            this.requestFocus();
+
+            new java.util.Timer().schedule(
+                    new java.util.TimerTask() {
+                        @Override
+                        public void run() {
+                            javax.swing.SwingUtilities.invokeLater(() -> {
+                                setAlwaysOnTop(false);
+                            });
+                        }
+                    },
+                    1000
+            );
+
+            System.out.println("[JCEF] Fullscreen mode enabled");
+        } else {
+            this.dispose();
+            this.setUndecorated(false);
+            this.setExtendedState(JFrame.NORMAL);
+
+            this.setSize(normalWidth, normalHeight);
+            this.setLocation(normalX, normalY);
+            this.setVisible(true);
+
+            System.out.println("[JCEF] Window mode restored");
+        }
     }
 }

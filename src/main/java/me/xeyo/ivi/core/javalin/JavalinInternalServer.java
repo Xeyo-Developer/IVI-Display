@@ -9,6 +9,7 @@ import java.util.List;
 import me.xeyo.ivi.IVIDisplay;
 import me.xeyo.ivi.core.error.InternalExceptionTracker;
 import me.xeyo.ivi.core.javalin.handler.error.ErrorRelay;
+import me.xeyo.ivi.core.javalin.handler.settings.AppSettingsHandler;
 
 public class JavalinInternalServer {
 
@@ -18,6 +19,7 @@ public class JavalinInternalServer {
 
     {
         this.handlers.add(new ErrorRelay());
+        this.handlers.add(new AppSettingsHandler());
     }
 
     public JavalinInternalServer(){
