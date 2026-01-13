@@ -1,0 +1,16 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+jcef-bundle/
+debug.log
+dependency-reduced-pom.xml
+
+### IntelliJ IDEA ###
+.idea/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
